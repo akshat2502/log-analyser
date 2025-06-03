@@ -40,18 +40,17 @@ function App() {
         document.body.removeChild(script);
       }
     };
-  }, []); // Empty dependency array ensures this effect runs only once on component mount
-
+  }, []); 
+  
   // Handles the file upload and parses the CSV data
   const handleFileUpload = (event) => {
-    setLogData([]); // Clear previous log data
-    setErrorMessage(''); // Clear previous error messages
+    setLogData([]); 
+    setErrorMessage(''); 
     const file = event.target.files[0];
 
     // Only proceed if a file is selected and PapaParse has been loaded
     if (file && papaLoaded) {
       setFileName(file.name); // Set the name of the uploaded file
-      // Use window.Papa because the library is loaded globally
       window.Papa.parse(file, {
         header: true, // Crucially, set to true to parse with headers
         skipEmptyLines: true, // Skip any empty lines in the CSV
@@ -84,6 +83,7 @@ function App() {
     const processedFailureBlocks = [];
     let currentBlockStartTime = null;
     let currentBlockEndTime = null;
+    let currentDate= null;
 
     // Find the indices of the 'date', 'time', and 'status' columns (case-insensitive and trimmed)
     const dateIndex = headers.findIndex(header => header.toLowerCase().trim() === 'date');
@@ -99,29 +99,31 @@ function App() {
 
     data.forEach((row) => {
       // Access data by header name (case-insensitive for robustness)
-      const date = row[headers[dateIndex]] ? String(row[headers[dateIndex]]).trim() : '';
-      const time = row[headers[timeIndex]] ? String(row[headers[timeIndex]]).trim() : '';
+      const date = row[headers[dateIndex]] ? String(row[headers[dateIndex]]).trim() : '-';
+      const time = row[headers[timeIndex]] ? String(row[headers[timeIndex]]).trim() : '-';
       const status = row[headers[statusIndex]] ? String(row[headers[statusIndex]]).trim().toLowerCase() : '';
 
-      // Combine date and time to form a complete timestamp
-      const fullTimestamp = `${date} ${time}`.trim();
+      console.log('date',date );
 
       if (status === 'failure') {
         if (currentBlockStartTime === null) {
-          currentBlockStartTime = fullTimestamp;
+          currentBlockStartTime = time;
+          currentDate= date;
         }
-        currentBlockEndTime = fullTimestamp;
+        currentBlockEndTime = time;
       } else {
         if (currentBlockStartTime !== null) {
           // Push the identified failure block
           processedFailureBlocks.push({
             status: 'Failure Block',
+            date: currentDate,
             startTime: currentBlockStartTime,
             endTime: currentBlockEndTime,
           });
           // Reset for the next block
           currentBlockStartTime = null;
           currentBlockEndTime = null;
+          currentDate=null;
         }
       }
     });
@@ -130,6 +132,7 @@ function App() {
     if (currentBlockStartTime !== null) {
       processedFailureBlocks.push({
         status: 'Failure Block (No trailing OK)', // Indicate if the block didn't end with an 'OK'
+        date: currentDate,
         startTime: currentBlockStartTime,
         endTime: currentBlockEndTime,
       });
@@ -155,8 +158,8 @@ function App() {
 
     // Prepare data for CSV, ensuring headers are included
     const csvData = [
-      ['Status', 'Start Time', 'End Time'], // CSV header row
-      ...logData.map(block => [block.status, block.startTime, block.endTime]) // Map logData to CSV rows
+      ['Status', 'date', 'Start Time', 'End Time'], // CSV header row
+      ...logData.map(block => [block.status, block.date, block.startTime, block.endTime]) // Map logData to CSV rows
     ];
 
     // Convert the array of arrays to a CSV string using PapaParse
@@ -171,7 +174,7 @@ function App() {
     // Create a temporary anchor element to trigger the download
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'failure_blocks.csv'); // Set the download filename
+    link.setAttribute('download', 'logging_file.csv'); // Set the download filename
     document.body.appendChild(link); // Append to body to make it clickable
 
     link.click(); // Programmatically click the link to start download
@@ -228,12 +231,14 @@ function App() {
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 h-96 overflow-y-auto shadow-inner">
               <div className='flex justify-between items-center bg-gray-100 p-2 rounded-md mb-3 font-semibold text-gray-700 border-b border-gray-200'>
                 <span className='w-1/3 text-center'>Status</span>
+                <span className='w-1/3 text-center'>Date</span>
                 <span className='w-1/3 text-center'>Start Time</span> {/* This will now include date */}
                 <span className='w-1/3 text-center'>End Time</span>   {/* This will now include date */}
               </div>
               {logData.map((block, index) => (
                 <div key={index} className="mb-3 p-3 border border-red-200 rounded-lg bg-red-50 flex justify-between items-center text-sm">
                   <p className="font-medium text-red-700 w-1/3 text-center">{block.status}</p>
+                  <p className="font-medium text-red-700 w-1/3 text-center">{block.date}</p>
                   <p className="text-red-600 w-1/3 text-center font-mono">{block.startTime}</p>
                   <p className="text-red-600 w-1/3 text-center font-mono">{block.endTime}</p>
                 </div>

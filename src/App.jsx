@@ -79,6 +79,11 @@ function App() {
     let currentBlockStartTime = null;
     let currentBlockEndTime = null;
     let currentDate= null;
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+    const day = String(today.getDate()).padStart(2, '0');
+    const defaultDate = `${day}-${month}-${year}`;
 
     // const dateIndex = headers.findIndex(header => header.toLowerCase().trim() === 'date');
     // const timeIndex = headers.findIndex(header => header.toLowerCase().trim() === 'time');
@@ -93,7 +98,7 @@ function App() {
     data.forEach((row) => {
       // const date = row[headers[dateIndex]] ? String(row[headers[dateIndex]]).trim() : '-';
       const time = row[0] ? String(row[0]).trim() : '';
-      const date = row[5] ? String(row[5]).trim() : '';
+      const date = row[5] ? String(row[5]).trim() : defaultDate;
       const status = row[3] ? String(row[3]).trim().toLowerCase() : '';
 
       if (status === 'failure') {

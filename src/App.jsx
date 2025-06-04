@@ -4,11 +4,10 @@ function App() {
   const [logData, setLogData] = useState([]);
   const [fileName, setFileName] = useState('');
   const [papaLoaded, setPapaLoaded] = useState(false);
-  const [errorMessage, setErrorMessage] = useState(''); // State for error messages
-
+  const [errorMessage, setErrorMessage] = useState(''); 
+  
   // useEffect hook to dynamically load the PapaParse library from a CDN
   useEffect(() => {
-    // Check if PapaParse is already available globally
     if (window.Papa) {
       setPapaLoaded(true);
       return;
@@ -17,8 +16,8 @@ function App() {
     // Create a new script element for PapaParse
     const script = document.createElement('script');
     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js'; // CDN URL
-    script.async = true; // Load script asynchronously
-
+    script.async = true; 
+    
     // Set onload event to update state once the script is successfully loaded
     script.onload = () => {
       setPapaLoaded(true);
@@ -34,7 +33,6 @@ function App() {
     // Append the script to the document body to start loading
     document.body.appendChild(script);
 
-    // Cleanup function: remove the script when the component unmounts
     return () => {
       if (document.body.contains(script)) {
         document.body.removeChild(script);
@@ -48,12 +46,11 @@ function App() {
     setErrorMessage(''); 
     const file = event.target.files[0];
 
-    // Only proceed if a file is selected and PapaParse has been loaded
     if (file && papaLoaded) {
-      setFileName(file.name); // Set the name of the uploaded file
+      setFileName(file.name); 
       window.Papa.parse(file, {
-        header: true, // Crucially, set to true to parse with headers
-        skipEmptyLines: true, // Skip any empty lines in the CSV
+        header: false, 
+        skipEmptyLines: true, 
         complete: (result) => {
           // Check for parsing errors
           if (result.errors.length) {
@@ -62,7 +59,7 @@ function App() {
             return;
           }
           // Process the parsed data, passing data and fields (headers)
-          processLogData(result.data, result.meta.fields);
+          processLogData(result.data);
         },
         error: (err) => {
           console.error('PapaParse error:', err);
@@ -70,40 +67,34 @@ function App() {
         }
       });
     } else if (file && !papaLoaded) {
-      // Warn user if PapaParse is still loading
       setErrorMessage('PapaParse library is still loading. Please try uploading the file again in a moment.');
     } else if (!file) {
-      // Clear file name if no file is selected (e.g., user cancels file dialog)
       setFileName('');
     }
   };
 
   // Processes the log data to identify failure blocks based on headers
-  const processLogData = (data, headers) => {
+  const processLogData = (data) => {
     const processedFailureBlocks = [];
     let currentBlockStartTime = null;
     let currentBlockEndTime = null;
     let currentDate= null;
 
-    // Find the indices of the 'date', 'time', and 'status' columns (case-insensitive and trimmed)
-    const dateIndex = headers.findIndex(header => header.toLowerCase().trim() === 'date');
-    const timeIndex = headers.findIndex(header => header.toLowerCase().trim() === 'time');
-    const statusIndex = headers.findIndex(header => header.toLowerCase().trim() === 'status');
+    // const dateIndex = headers.findIndex(header => header.toLowerCase().trim() === 'date');
+    // const timeIndex = headers.findIndex(header => header.toLowerCase().trim() === 'time');
+    // const statusIndex = headers.findIndex(header => header.toLowerCase().trim() === 'status');
 
-    // Validate if essential headers are present
-    if (dateIndex === -1 || timeIndex === -1 || statusIndex === -1) {
-      setErrorMessage('CSV must contain "Date", "Time", and "Status" columns in its header.');
-      setLogData([]); // Clear any partially processed data
-      return;
-    }
+    // if (dateIndex === -1 || timeIndex === -1 || statusIndex === -1) {
+    //   setErrorMessage('CSV must contain "Date", "Time", and "Status" columns in its header.');
+    //   setLogData([]); // Clear any partially processed data
+    //   return;
+    // }
 
     data.forEach((row) => {
-      // Access data by header name (case-insensitive for robustness)
-      const date = row[headers[dateIndex]] ? String(row[headers[dateIndex]]).trim() : '-';
-      const time = row[headers[timeIndex]] ? String(row[headers[timeIndex]]).trim() : '-';
-      const status = row[headers[statusIndex]] ? String(row[headers[statusIndex]]).trim().toLowerCase() : '';
-
-      console.log('date',date );
+      // const date = row[headers[dateIndex]] ? String(row[headers[dateIndex]]).trim() : '-';
+      const time = row[0] ? String(row[0]).trim() : '';
+      const date = row[5] ? String(row[5]).trim() : '';
+      const status = row[3] ? String(row[3]).trim().toLowerCase() : '';
 
       if (status === 'failure') {
         if (currentBlockStartTime === null) {
@@ -131,7 +122,7 @@ function App() {
     // After the loop, check if there's an unclosed failure block (i.e., file ends with failure)
     if (currentBlockStartTime !== null) {
       processedFailureBlocks.push({
-        status: 'Failure Block (No trailing OK)', // Indicate if the block didn't end with an 'OK'
+        status: 'Failure Block (No trailing OK)', 
         date: currentDate,
         startTime: currentBlockStartTime,
         endTime: currentBlockEndTime,
@@ -140,26 +131,24 @@ function App() {
 
     // Update the state with the processed failure blocks
     setLogData(processedFailureBlocks);
-    // Set error message if no failure blocks are found after a file is selected
     if (processedFailureBlocks.length === 0 && fileName) {
       setErrorMessage('No failure blocks found in the uploaded file.');
     } else {
-      setErrorMessage(''); // Clear error if data is processed successfully
-    }
+      setErrorMessage(''); 
+      }
     console.log('Processed Failure Blocks:', processedFailureBlocks);
   };
 
   // Handles the download of the processed log data as a CSV file
   const handleDownloadCsv = () => {
     if (logData.length === 0) {
-      // If no data, do nothing
       return;
     }
 
     // Prepare data for CSV, ensuring headers are included
     const csvData = [
-      ['Status', 'date', 'Start Time', 'End Time'], // CSV header row
-      ...logData.map(block => [block.status, block.date, block.startTime, block.endTime]) // Map logData to CSV rows
+      ['Status', 'date', 'Start Time', 'End Time'], 
+      ...logData.map(block => [block.status, block.date, block.startTime, block.endTime])
     ];
 
     // Convert the array of arrays to a CSV string using PapaParse
@@ -177,10 +166,10 @@ function App() {
     link.setAttribute('download', 'logging_file.csv'); // Set the download filename
     document.body.appendChild(link); // Append to body to make it clickable
 
-    link.click(); // Programmatically click the link to start download
+    link.click();
 
-    document.body.removeChild(link); // Clean up the temporary link
-    URL.revokeObjectURL(url); // Revoke the object URL to free up memory
+    document.body.removeChild(link); 
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -232,8 +221,8 @@ function App() {
               <div className='flex justify-between items-center bg-gray-100 p-2 rounded-md mb-3 font-semibold text-gray-700 border-b border-gray-200'>
                 <span className='w-1/3 text-center'>Status</span>
                 <span className='w-1/3 text-center'>Date</span>
-                <span className='w-1/3 text-center'>Start Time</span> {/* This will now include date */}
-                <span className='w-1/3 text-center'>End Time</span>   {/* This will now include date */}
+                <span className='w-1/3 text-center'>Start Time</span> 
+                <span className='w-1/3 text-center'>End Time</span>  
               </div>
               {logData.map((block, index) => (
                 <div key={index} className="mb-3 p-3 border border-red-200 rounded-lg bg-red-50 flex justify-between items-center text-sm">
